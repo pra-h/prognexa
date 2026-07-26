@@ -1421,8 +1421,8 @@
     <script>
         "use strict";
 
-        // ===== API BASE – injected at runtime by Docker =====
-        const API_BASE = '{{API_BASE}}';
+        // ===== API BASE – hardcoded to use Nginx proxy =====
+        const API_BASE = '/api';
 
         let token = localStorage.getItem('access_token');
         let currentUser = null;
