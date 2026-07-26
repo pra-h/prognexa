@@ -1,14 +1,14 @@
 # ==========================================================
 # Prognexa AI
-# Prediction Logic (Top 13 Features)
+# Prediction Logic (with graceful fallback)
 # ==========================================================
 
 import pandas as pd
 import numpy as np
-from loader import model, feature_columns
+from loader import model, feature_columns, label_encoders
 from preprocessor import preprocess_patient_data
 
-# Define the top 13 most important features (based on your model)
+# Define the top 13 most important features (used for fallback)
 TOP_FEATURES = [
     'time_in_hospital',
     'num_lab_procedures',
@@ -27,44 +27,42 @@ TOP_FEATURES = [
 
 def predict_patient(data: dict):
     """
-    Predict readmission risk using only the top 13 features.
-    Falls back to a simple weighted rule if the model is not available.
+    Predict readmission risk. 
+    Uses the real model if available, otherwise falls back to a rule‑based method.
     """
-    # 1. Preprocess the full data (to ensure proper encoding and scaling)
-    #    The preprocessor expects all features, so we pass the whole data.
-    #    It will handle missing features gracefully (we hope).
+    # 1. Preprocess
     try:
         processed = preprocess_patient_data(data)
-        # Convert to DataFrame with all feature columns
-        df = pd.DataFrame([processed], columns=feature_columns)
-        
-        # 2. Filter to only the top 13 features (in the order the model expects)
-        #    Ensure we only use columns that exist in both TOP_FEATURES and feature_columns
-        #    If the model was trained on all features, we can reorder to match training
-        #    but we must use the same column order as training.
-        #    Here we assume the model was trained on the full set, but we only pass a subset.
-        #    This might cause an error if the model expects all columns.
-        #    To be safe, we extract the top features and reorder to match training.
-        #    We'll create a new DataFrame with only the top features and then reorder.
-        #    Since we don't have the exact training order, we'll assume the model uses feature_columns order.
-        #    We'll filter feature_columns to only those in TOP_FEATURES.
-        filtered_cols = [col for col in feature_columns if col in TOP_FEATURES]
-        # Subset the data
-        df_subset = df[filtered_cols]
-        # Reorder to match TOP_FEATURES order (which is the order we'll use)
-        df_subset = df_subset[TOP_FEATURES]
-        
-        # 3. Predict
-        probability = float(model.predict_proba(df_subset)[0][1])
-        prediction = int(model.predict(df_subset)[0])
-        
+        # Ensure we have a DataFrame with the correct feature order
+        # If feature_columns are available, use them; otherwise use TOP_FEATURES.
+        if feature_columns:
+            df = pd.DataFrame([processed], columns=feature_columns)
+        else:
+            df = pd.DataFrame([processed], columns=TOP_FEATURES)
+        # If the model is real (XGBClassifier), predict with the DataFrame
+        # If mock, predict with the first 13 features
+        if hasattr(model, 'predict_proba'):
+            # Determine which columns to use
+            cols_to_use = feature_columns if feature_columns else TOP_FEATURES
+            # Ensure we only use columns that exist in df
+            available_cols = [c for c in cols_to_use if c in df.columns]
+            if not available_cols:
+                available_cols = TOP_FEATURES[:len(df.columns)]
+            df_subset = df[available_cols]
+            # If the model was trained on more features, we might need to pad
+            # but we trust the preprocessor to return the correct order.
+            probability = float(model.predict_proba(df_subset)[0][1])
+            prediction = int(model.predict(df_subset)[0])
+        else:
+            # Mock model: use fallback
+            probability = _fallback_predict(data)
+            prediction = 1 if probability >= 0.5 else 0
     except Exception as e:
-        # Fallback: use a simple rule-based prediction
-        print(f"⚠️ Model prediction failed, using fallback logic: {e}")
+        print(f"⚠️ Prediction failed, using fallback: {e}")
         probability = _fallback_predict(data)
         prediction = 1 if probability >= 0.5 else 0
 
-    # 4. Map to labels and risk
+    # 2. Map to labels and risk
     if prediction == 1:
         label = "Readmission Likely"
     else:
