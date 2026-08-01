@@ -1,0 +1,45 @@
+{
+  "services": {
+    "prognexa-backend": {
+      "build": {
+        "context": "./backend",
+        "dockerfile": "Dockerfile"
+      },
+      "ports": [
+        {
+          "port": 8000,
+          "protocol": "HTTP",
+          "public": true
+        }
+      ],
+      "environment": {
+        "DB_NAME": "prognexa",
+        "JWT_SECRET_KEY": "your-secret-key",
+        "ALGORITHM": "HS256",
+        "ACCESS_TOKEN_EXPIRE_MINUTES": "30"
+      },
+      "resources": {
+        "instance": "nf-compute-15"
+      }
+    },
+    "prognexa-frontend": {
+      "build": {
+        "context": "./frontend",
+        "dockerfile": "Dockerfile"
+      },
+      "ports": [
+        {
+          "port": 80,
+          "protocol": "HTTP",
+          "public": true
+        }
+      ],
+      "environment": {
+        "API_BASE": "https://prognexa-backend--your-project-code.code.run"
+      },
+      "resources": {
+        "instance": "nf-compute-15"
+      }
+    }
+  }
+}
