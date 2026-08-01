@@ -973,7 +973,7 @@
         </div>
 
         <!-- ============================================================
-        DASHBOARD (with Medium Risk, no Avg)
+        DASHBOARD
         ============================================================ -->
         <section id="section-dashboard" class="page-section active">
             <div class="stats-grid" id="statsGrid">
@@ -1020,7 +1020,7 @@
         </section>
 
         <!-- ============================================================
-        PATIENTS (with pagination)
+        PATIENTS
         ============================================================ -->
         <section id="section-patients" class="page-section">
             <div class="glass">
@@ -1039,7 +1039,6 @@
                     <input type="text" id="patientSearch" placeholder="Search by name or patient ID..." oninput="applyFilters()" />
                 </div>
                 <div id="patientsList"><p style="color:var(--text-muted);">Loading patients...</p></div>
-                <!-- Pagination controls -->
                 <div class="pagination-bar" id="paginationBar" style="display:none;">
                     <button class="btn-secondary btn-sm" id="prevPageBtn" onclick="changePage(-1)"><i class="fas fa-chevron-left"></i> Previous</button>
                     <span class="page-info" id="pageInfo">Page 1 of 1</span>
@@ -1065,7 +1064,6 @@
                 </div>
                 <form id="predictionForm">
                     <div class="form-grid">
-                        <!-- full form – kept as before -->
                         <div class="form-section-title"><i class="fas fa-user-circle"></i> Demographics</div>
                         <div class="field"><label>Patient Name</label><input type="text" id="patientName" placeholder="Enter patient name" value="" /></div>
                         <div class="field"><label>Race</label><select id="race"><option>Caucasian</option><option>AfricanAmerican</option><option>Asian</option><option>Hispanic</option><option>Other</option></select></div>
@@ -1154,7 +1152,7 @@
         </section>
 
         <!-- ============================================================
-        TREATMENT EFFECTIVENESS (with Medium Risk stat)
+        TREATMENT EFFECTIVENESS
         ============================================================ -->
         <section id="section-treatmenteffect" class="page-section">
             <div class="glass">
@@ -1165,7 +1163,6 @@
                     <div class="stat-card card"><div class="icon"><i class="fas fa-minus-circle" style="color:#f0ad4e;"></i></div><div class="number" id="effMediumRisk">0</div><div class="label">Medium Risk</div></div>
                     <div class="stat-card card"><div class="icon"><i class="fas fa-check-circle"></i></div><div class="number" id="effLowRisk">0</div><div class="label">Low Risk</div></div>
                 </div>
-                <!-- Hospital Trend Chart -->
                 <div style="margin-top:16px; background:rgba(255,255,255,0.15); border-radius:var(--radius-sm); padding:16px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
                         <h4 style="margin-bottom:4px;">Hospital Risk Trend</h4>
@@ -1330,12 +1327,9 @@
                 </div>
                 <div id="modelMessage" style="margin-top:12px;"></div>
             </div>
-            <!-- Separate card for Features Used -->
             <div class="glass" style="margin-top:20px;">
                 <h4 style="margin-bottom:8px;"><i class="fas fa-list-ul" style="color:var(--primary-light);"></i> Features Used</h4>
-                <ul id="modelFeatures" style="color:var(--text-muted); font-size:0.85rem; list-style-type:disc; padding-left:20px; columns:2; column-gap:30px;">
-                    <!-- populated by JavaScript -->
-                </ul>
+                <ul id="modelFeatures" style="color:var(--text-muted); font-size:0.85rem; list-style-type:disc; padding-left:20px; columns:2; column-gap:30px;"></ul>
             </div>
         </section>
 
@@ -1416,13 +1410,15 @@
     </div>
 
     <!-- ============================================================
-    JAVASCRIPT
+    JAVASCRIPT - FIXED: No duplicate API_BASE
     ============================================================ -->
     <script>
         "use strict";
 
-        // ===== API BASE – hardcoded to use Nginx proxy =====
+        // ===== API Configuration - Hardcoded for Nginx proxy =====
+        // No config.js needed - API_BASE is defined here
         const API_BASE = '/api';
+        console.log('🚀 API_BASE:', API_BASE);
 
         let token = localStorage.getItem('access_token');
         let currentUser = null;
@@ -1441,38 +1437,21 @@
         const itemsPerPage = 10;
 
         // ===== IST TIME HELPERS =====
-        // Backend timestamps are generated with datetime.utcnow() and often serialized
-        // WITHOUT a timezone suffix (no "Z" / "+00:00"). When a browser parses a
-        // date-time string that has no timezone marker, the JS spec says to treat it
-        // as LOCAL time, not UTC — so no UTC→IST shift ever happens and the raw UTC
-        // numbers get displayed as if they were already IST. parseAsUTC() fixes this
-        // by explicitly marking such strings as UTC before handing them to Date().
         function parseAsUTC(dateStr) {
             if (!dateStr) return null;
             let s = String(dateStr).trim();
             if (s === '') return null;
-
-            // Normalize a "YYYY-MM-DD HH:MM..." (space) separator to the ISO "T" separator
             if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) {
                 s = s.replace(' ', 'T');
             }
-
             const hasTimePart = s.includes('T');
-
             if (hasTimePart) {
-                // JS Date only supports up to millisecond precision; Python's isoformat()
-                // emits microseconds (6 digits) which some browsers mis-parse. Trim to 3.
                 s = s.replace(/(\.\d{3})\d+/, '$1');
-
-                // Does the string already carry an explicit timezone marker?
                 const hasTZ = /Z$|[+-]\d{2}:?\d{2}$/i.test(s);
                 if (!hasTZ) {
-                    s += 'Z'; // mark naive backend timestamps as UTC
+                    s += 'Z';
                 }
             }
-            // Pure date-only strings ("YYYY-MM-DD") are already treated as UTC midnight
-            // by the ECMAScript spec, so they're left untouched.
-
             const d = new Date(s);
             return isNaN(d.getTime()) ? null : d;
         }
@@ -1521,18 +1500,21 @@
             loginScreen.classList.add('hidden');
             signupScreen.classList.add('hidden');
         }
+
         function showLogin() {
             loginFlow.style.display = 'flex';
             startupScreen.classList.add('hidden');
             loginScreen.classList.remove('hidden');
             signupScreen.classList.add('hidden');
         }
+
         function showSignup() {
             loginFlow.style.display = 'flex';
             startupScreen.classList.add('hidden');
             loginScreen.classList.add('hidden');
             signupScreen.classList.remove('hidden');
         }
+
         function showApp() {
             loginFlow.style.display = 'none';
             appContent.classList.remove('hidden');
@@ -1636,7 +1618,7 @@
                 currentUser = user;
                 usernameDisplay.textContent = user.username;
                 userRoleDisplay.textContent = user.role;
-                const roleMap = { 'doctor':'Doctor', 'admin':'Hospital Administrator', 'researcher':'Healthcare Researcher', 'sysadmin':'System Administrator' };
+                const roleMap = { 'doctor': 'Doctor', 'admin': 'Hospital Administrator', 'researcher': 'Healthcare Researcher', 'sysadmin': 'System Administrator' };
                 roleBadge.textContent = roleMap[user.role] || user.role;
                 document.getElementById('settingsUsername').value = user.username;
                 document.getElementById('settingsRole').value = user.role;
@@ -1744,7 +1726,8 @@
         async function fetchDashboard() {
             try {
                 const resp = await fetch(`${API_BASE}/analytics/overview`, { headers: getAuthHeaders() });
-                if (!resp.ok) { if (resp.status === 401) { clearToken(); showLogin(); return; } throw new Error('Failed to fetch stats'); }
+                if (!resp.ok) { if (resp.status === 401) { clearToken();
+                        showLogin(); return; } throw new Error('Failed to fetch stats'); }
                 const data = await resp.json();
                 document.getElementById('statPatients').textContent = data.total_patients || 0;
                 document.getElementById('statHighRisk').textContent = data.high_risk || 0;
@@ -1760,9 +1743,9 @@
         function renderCharts(data) {
             const riskCtx = document.getElementById('riskChart').getContext('2d');
             if (riskChartInstance) riskChartInstance.destroy();
-            const riskLabels = data.risk_distribution ? data.risk_distribution.map(r => r.label) : ['High','Medium','Low'];
-            const riskValues = data.risk_distribution ? data.risk_distribution.map(r => r.value) : [0,0,0];
-            const riskColors = data.risk_distribution ? data.risk_distribution.map(r => r.color) : ['#d9534f','#f0ad4e','#5cb85c'];
+            const riskLabels = data.risk_distribution ? data.risk_distribution.map(r => r.label) : ['High', 'Medium', 'Low'];
+            const riskValues = data.risk_distribution ? data.risk_distribution.map(r => r.value) : [0, 0, 0];
+            const riskColors = data.risk_distribution ? data.risk_distribution.map(r => r.color) : ['#d9534f', '#f0ad4e', '#5cb85c'];
             riskChartInstance = new Chart(riskCtx, {
                 type: 'doughnut',
                 data: { labels: riskLabels, datasets: [{ data: riskValues, backgroundColor: riskColors, borderWidth: 2, borderColor: '#fff' }] },
@@ -1780,11 +1763,11 @@
             if (trendChartInstance) trendChartInstance.destroy();
             let labels, values;
             if (mode === 'monthly') {
-                labels = data.monthly_trend?.months || ['Jan','Feb','Mar','Apr','May','Jun'];
-                values = data.monthly_trend?.counts || [0,0,0,0,0,0];
+                labels = data.monthly_trend?.months || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                values = data.monthly_trend?.counts || [0, 0, 0, 0, 0, 0];
             } else {
-                labels = data.yearly_trend?.years || ['2022','2023','2024','2025','2026'];
-                values = data.yearly_trend?.counts || [0,0,0,0,0];
+                labels = data.yearly_trend?.years || ['2022', '2023', '2024', '2025', '2026'];
+                values = data.yearly_trend?.counts || [0, 0, 0, 0, 0];
             }
             trendChartInstance = new Chart(ctx, {
                 type: 'bar',
@@ -1843,15 +1826,16 @@
             } catch (e) { console.warn('Population dashboard error:', e); }
         }
 
-        // ===== PATIENTS (with pagination) =====
+        // ===== PATIENTS =====
         async function loadPatients() {
             const container = document.getElementById('patientsList');
             container.innerHTML = '<p style="color:var(--text-muted);">Loading patients...</p>';
             try {
                 const resp = await fetch(`${API_BASE}/patients`, { headers: getAuthHeaders() });
-                if (!resp.ok) { if (resp.status === 401) { clearToken(); showLogin(); return; } throw new Error('Failed to load patients'); }
+                if (!resp.ok) { if (resp.status === 401) { clearToken();
+                        showLogin(); return; } throw new Error('Failed to load patients'); }
                 allPatients = await resp.json();
-                allPatients.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+                allPatients.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                 populateDoctorFilterForPatients();
                 applyFilters();
                 populatePredictPatientSelect();
@@ -1862,7 +1846,10 @@
             const sel = document.getElementById('filterDoctor');
             const doctors = [...new Set(allPatients.map(p => p.assigned_doctor).filter(Boolean))];
             sel.innerHTML = '<option value="all">All Doctors</option>';
-            doctors.forEach(d => { const opt = document.createElement('option'); opt.value = d; opt.textContent = d; sel.appendChild(opt); });
+            doctors.forEach(d => { const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = d;
+                sel.appendChild(opt); });
         }
 
         function populatePredictPatientSelect() {
@@ -1886,8 +1873,7 @@
                 if (risk !== 'all') { const r = p.prediction_result?.risk_level || 'N/A'; if (r !== risk) return false; }
                 if (start || end) {
                     const d = p.created_at ? new Date(p.created_at) : null;
-                    if (d) { if (start && new Date(start) > d) return false; if (end && new Date(end) < d) return false; }
-                    else return false;
+                    if (d) { if (start && new Date(start) > d) return false; if (end && new Date(end) < d) return false; } else return false;
                 }
                 if (doctor !== 'all') { if ((p.assigned_doctor || 'Unassigned') !== doctor) return false; }
                 if (search) { const name = (p.name || '').toLowerCase(); const id = (p.patient_id || '').toLowerCase(); if (!name.includes(search) && !id.includes(search)) return false; }
@@ -1965,7 +1951,8 @@
             if (!confirm(`Discharge patient ${patientId}?`)) return;
             try {
                 const resp = await fetch(`${API_BASE}/patients/${patientId}/discharge`, { method: 'POST', headers: { ...getAuthHeaders() } });
-                if (!resp.ok) { const err = await resp.json(); alert(err.detail || 'Failed to discharge patient'); return; }
+                if (!resp.ok) { const err = await resp.json();
+                    alert(err.detail || 'Failed to discharge patient'); return; }
                 alert('Patient discharged successfully');
                 loadPatients();
                 fetchDashboard();
@@ -1976,7 +1963,8 @@
             if (!confirm(`Readmit patient ${patientId}?`)) return;
             try {
                 const resp = await fetch(`${API_BASE}/patients/${patientId}/readmit`, { method: 'POST', headers: { ...getAuthHeaders() } });
-                if (!resp.ok) { const err = await resp.json(); alert(err.detail || 'Failed to readmit patient'); return; }
+                if (!resp.ok) { const err = await resp.json();
+                    alert(err.detail || 'Failed to readmit patient'); return; }
                 alert('Patient readmitted successfully');
                 loadPatients();
                 fetchDashboard();
@@ -1994,7 +1982,7 @@
                     throw new Error('Failed to load reports');
                 }
                 allReports = await resp.json();
-                allReports.sort((a,b) => new Date(b.generated_at) - new Date(a.generated_at));
+                allReports.sort((a, b) => new Date(b.generated_at) - new Date(a.generated_at));
                 if (allReports.length === 0) { container.innerHTML = '<p style="color:var(--text-muted);">No reports generated yet.</p>'; return; }
                 let html = `<div style="overflow-x:auto;"><table class="patient-table"><thead><tr>
                     <th>Report ID</th><th>Generated By</th><th>Date</th><th>Patients</th><th>High</th><th>Medium</th><th>Low</th><th>Actions</th>
@@ -2025,7 +2013,8 @@
             let url = `${API_BASE}/reports/generate?doctor=all&risk_level=all`;
             try {
                 const resp = await fetch(url, { method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, body: '{}' });
-                if (!resp.ok) { const err = await resp.json(); alert(err.detail || 'Failed to generate report'); return; }
+                if (!resp.ok) { const err = await resp.json();
+                    alert(err.detail || 'Failed to generate report'); return; }
                 const result = await resp.json();
                 alert(`Report generated! ID: ${result.report_id}`);
                 loadReports();
@@ -2060,7 +2049,10 @@
             const sel = document.getElementById('modalFilterDoctor');
             const doctors = [...new Set(patients.map(p => p.assigned_doctor).filter(Boolean))];
             sel.innerHTML = '<option value="all">All Doctors</option>';
-            doctors.forEach(d => { const opt = document.createElement('option'); opt.value = d; opt.textContent = d; sel.appendChild(opt); });
+            doctors.forEach(d => { const opt = document.createElement('option');
+                opt.value = d;
+                opt.textContent = d;
+                sel.appendChild(opt); });
         }
 
         function applyModalFilters() {
@@ -2114,12 +2106,14 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `report_export_${new Date().toISOString().slice(0,10)}.csv`;
+            a.download = `report_export_${new Date().toISOString().slice(0, 10)}.csv`;
             a.click();
             URL.revokeObjectURL(url);
         }
 
-        function closeModal() { modal.classList.remove('active'); currentReportData = null; currentReportFiltered = null; }
+        function closeModal() { modal.classList.remove('active');
+            currentReportData = null;
+            currentReportFiltered = null; }
         modal.addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 
         // ===== TREATMENT EFFECTIVENESS =====
@@ -2197,7 +2191,7 @@
             }
         }
 
-        // ===== PREDICT page – load patient data =====
+        // ===== PREDICT page =====
         async function loadPatientForPrediction() {
             const patientId = document.getElementById('predictPatientSelect').value;
             if (patientId === 'new') {
@@ -2466,7 +2460,6 @@
                 if (notes.length === 0) { container.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">No notes found.</p>'; return; }
                 let html = '';
                 notes.forEach(n => {
-                    // Use timestamp (full datetime) if available, otherwise fallback to date
                     const dateField = n.timestamp || n.date;
                     const date = dateField ? formatIST(dateField) : 'N/A';
                     html += `<div class="note-item"><span class="note-content">${n.content}</span><span class="note-date">${date}</span><button class="btn-danger btn-sm" onclick="deleteNote('${n._id}')"><i class="fas fa-trash"></i></button></div>`;
@@ -2507,22 +2500,25 @@
 
         // ===== APPOINTMENTS =====
         function getAppointmentsKey() { return `appointments_${currentUser?.username || 'guest'}`; }
+
         function getAppointments() {
             const key = getAppointmentsKey();
             let appts = JSON.parse(localStorage.getItem(key));
             if (!appts || appts.length === 0) {
-                const names = ['Emma Wilson','James Anderson','Sophia Martinez','Michael Johnson','Olivia Davis','William Brown','Ava Garcia','Ethan Miller'];
-                const times = ['09:00','10:30','11:45','13:15','14:45','16:00','17:30'];
-                const statuses = ['Confirmed','Pending','Canceled'];
+                const names = ['Emma Wilson', 'James Anderson', 'Sophia Martinez', 'Michael Johnson', 'Olivia Davis', 'William Brown', 'Ava Garcia', 'Ethan Miller'];
+                const times = ['09:00', '10:30', '11:45', '13:15', '14:45', '16:00', '17:30'];
+                const statuses = ['Confirmed', 'Pending', 'Canceled'];
                 appts = [];
                 for (let i = 0; i < Math.floor(Math.random() * 5) + 3; i++) {
-                    appts.push({ id: i+1, time: times[Math.floor(Math.random()*times.length)], patient: names[Math.floor(Math.random()*names.length)], status: statuses[Math.floor(Math.random()*statuses.length)] });
+                    appts.push({ id: i + 1, time: times[Math.floor(Math.random() * times.length)], patient: names[Math.floor(Math.random() * names.length)], status: statuses[Math.floor(Math.random() * statuses.length)] });
                 }
                 localStorage.setItem(key, JSON.stringify(appts));
             }
             return appts;
         }
+
         function saveAppointments(appts) { localStorage.setItem(getAppointmentsKey(), JSON.stringify(appts)); }
+
         function loadAppointments() {
             const container = document.getElementById('appointmentsList');
             const appts = getAppointments();
@@ -2542,10 +2538,13 @@
             });
             container.innerHTML = html;
         }
+
         function updateAppointmentStatus(id, newStatus) {
             let appts = getAppointments();
             const appt = appts.find(a => a.id === id);
-            if (appt) { appt.status = newStatus; saveAppointments(appts); loadAppointments(); }
+            if (appt) { appt.status = newStatus;
+                saveAppointments(appts);
+                loadAppointments(); }
         }
 
         // ===== MY TASKS =====
@@ -2559,7 +2558,6 @@
                 if (tasks.length === 0) { container.innerHTML = '<p style="color:var(--text-muted);">No tasks assigned to you.</p>'; return; }
                 let html = `<div style="overflow-x:auto;"><table class="patient-table"><thead><tr><th>Task</th><th>Date</th><th>Assigned By</th></tr></thead><tbody>`;
                 tasks.forEach(t => {
-                    // Use created_at if available, else fallback to date
                     const dateField = t.created_at || t.date;
                     const date = dateField ? formatIST(dateField) : 'N/A';
                     const assignedBy = t.created_by || 'System Admin';
@@ -2599,7 +2597,6 @@
                 if (schedules.length === 0) { container.innerHTML = '<p style="color:var(--text-muted);">No schedules assigned.</p>'; return; }
                 let html = `<div style="overflow-x:auto;"><table class="patient-table"><thead><tr><th>Doctor</th><th>Task</th><th>Date</th><th>Assigned By</th><th>Actions</th></tr></thead><tbody>`;
                 schedules.forEach(s => {
-                    // Use created_at if available, else fallback to date
                     const dateField = s.created_at || s.date;
                     const date = dateField ? formatIST(dateField) : 'N/A';
                     const assignedBy = s.created_by || 'System Admin';
@@ -2621,7 +2618,8 @@
                     headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
                     body: JSON.stringify({ assigned_to, task, date })
                 });
-                if (!resp.ok) { const err = await resp.json(); alert(err.detail || 'Failed'); return; }
+                if (!resp.ok) { const err = await resp.json();
+                    alert(err.detail || 'Failed'); return; }
                 alert('Schedule created successfully!');
                 document.getElementById('scheduleTask').value = '';
                 loadSchedules();
@@ -2666,7 +2664,8 @@
             if (!confirm(`Delete user ${username}?`)) return;
             try {
                 const resp = await fetch(`${API_BASE}/admin/users/${username}`, { method: 'DELETE', headers: getAuthHeaders() });
-                if (!resp.ok) { const err = await resp.json(); alert(err.detail || 'Failed'); return; }
+                if (!resp.ok) { const err = await resp.json();
+                    alert(err.detail || 'Failed'); return; }
                 alert(`User ${username} deleted.`);
                 loadUserManagement();
             } catch (e) { alert('Error deleting user.'); }
@@ -2680,7 +2679,7 @@
 
         function buildPayload() {
             const getVal = id => document.getElementById(id).value;
-            const ageMap = { '[0-10)':'[0-10)','[10-20)':'[10-20)','[20-30)':'[20-30)','[30-40)':'[30-40)','[40-50)':'[40-50)','[50-60)':'[50-60)','[60-70)':'[60-70)','[70-80)':'[70-80)','[80-90)':'[80-90)','[90-100)':'[90-100)' };
+            const ageMap = { '[0-10)': '[0-10)', '[10-20)': '[10-20)', '[20-30)': '[20-30)', '[30-40)': '[30-40)', '[40-50)': '[40-50)', '[50-60)': '[50-60)', '[60-70)': '[60-70)', '[70-80)': '[70-80)', '[80-90)': '[80-90)', '[90-100)': '[90-100)' };
             return {
                 race: getVal('race'),
                 gender: getVal('gender'),
@@ -2752,7 +2751,6 @@
         }
 
         function resetForm() {
-            // Keep current values – just scroll to top of form
             document.querySelector('#section-predict .glass').scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -2772,7 +2770,8 @@
         function hideLoading(interval) {
             clearInterval(interval);
             progressFill.style.width = '100%';
-            setTimeout(() => { loadingOverlay.classList.remove('active'); progressFill.style.width = '0%'; }, 400);
+            setTimeout(() => { loadingOverlay.classList.remove('active');
+                progressFill.style.width = '0%'; }, 400);
         }
 
         form.addEventListener('submit', async (e) => {
@@ -2795,8 +2794,10 @@
                 hideLoading(interval);
                 if (!response.ok) {
                     let errorMsg = `Server error (${response.status})`;
-                    try { const errData = await response.json(); errorMsg = errData.detail || errorMsg; } catch (e) {}
-                    if (response.status === 401) { clearToken(); showLogin(); return; }
+                    try { const errData = await response.json();
+                        errorMsg = errData.detail || errorMsg; } catch (e) {}
+                    if (response.status === 401) { clearToken();
+                        showLogin(); return; }
                     displayResult(null, errorMsg);
                     return;
                 }
@@ -2818,23 +2819,45 @@
             const new1 = document.getElementById('newPassword').value;
             const new2 = document.getElementById('confirmPassword').value;
             const msg = document.getElementById('passwordMessage');
-            if (new1 !== new2) { msg.style.display='block'; msg.style.color='#d9534f'; msg.textContent='Passwords do not match.'; return; }
+            if (new1 !== new2) { msg.style.display = 'block';
+                msg.style.color = '#d9534f';
+                msg.textContent = 'Passwords do not match.'; return; }
             try {
                 const resp = await fetch(`${API_BASE}/settings/change-password`, {
                     method: 'POST',
                     headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
                     body: JSON.stringify({ old_password: old, new_password: new1 })
                 });
-                if (!resp.ok) { const err = await resp.json(); msg.style.display='block'; msg.style.color='#d9534f'; msg.textContent=err.detail||'Failed.'; return; }
-                msg.style.display='block'; msg.style.color='#5cb85c'; msg.textContent='Password updated!';
+                if (!resp.ok) { const err = await resp.json();
+                    msg.style.display = 'block';
+                    msg.style.color = '#d9534f';
+                    msg.textContent = err.detail || 'Failed.'; return; }
+                msg.style.display = 'block';
+                msg.style.color = '#5cb85c';
+                msg.textContent = 'Password updated!';
                 document.getElementById('oldPassword').value = '';
                 document.getElementById('newPassword').value = '';
                 document.getElementById('confirmPassword').value = '';
-            } catch (e) { msg.style.display='block'; msg.style.color='#d9534f'; msg.textContent='Network error.'; }
+            } catch (e) { msg.style.display = 'block';
+                msg.style.color = '#d9534f';
+                msg.textContent = 'Network error.'; }
         });
 
         // ===== INIT =====
         async function init() {
+            console.log('🏥 Prognexa AI started with API_BASE:', API_BASE);
+            // Test API connection
+            try {
+                const testResp = await fetch(`${API_BASE}/health`);
+                if (testResp.ok) {
+                    console.log('✅ Backend is reachable');
+                } else {
+                    console.warn('⚠️ Backend responded with status:', testResp.status);
+                }
+            } catch (e) {
+                console.warn('⚠️ Cannot reach backend:', e.message);
+            }
+
             if (token) {
                 const user = await loadUser();
                 if (user) { showApp(); return; }
@@ -2849,7 +2872,6 @@
         });
 
         init();
-        console.log('🏥 Prognexa AI started');
     </script>
 </body>
 </html>
